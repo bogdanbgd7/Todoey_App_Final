@@ -11,13 +11,18 @@ import UIKit
 class TodoListViewController: UITableViewController{ //changed VC to TableVC
     
     var itemArray = ["Find Mike", "Buy milk", "Buy gas", "Buy sneakers"]
+    
+    var defaults = UserDefaults() 
 
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         
-//        self.tableview.delegate = self
-//        self.tableview.datasource = self
+        if let items = defaults.array(forKey: "DataStorage") as? [String] {
+            itemArray = items
+        }
+        
+
     }
     
     //MARK - TableView DataSource METHODS
@@ -71,6 +76,8 @@ class TodoListViewController: UITableViewController{ //changed VC to TableVC
             //what will happen once the user clicks the ADD item button on our alert
             
             self.itemArray.append(textField.text!)
+            
+            self.defaults.set(self.itemArray, forKey: "DataStorage")
             
             self.tableView.reloadData()
             
