@@ -13,30 +13,21 @@ class TodoListViewController: UITableViewController{ //changed VC to TableVC
 //    var itemArray = ["Find Mike", "Buy milk", "Buy gas", "Buy sneakers"]
     
     var itemArray = [Item]()
-    var defaults = UserDefaults.standard //singleton
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    //deleted userDefaults before adding dataFilePath
+    
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
         
-        let newItem = Item() //new item is new object of the type Item
-        newItem.title = "Find Mike"
-        newItem.done = true
-        itemArray.append(newItem)
-        
-        let newItem2 = Item() //new item is new object of the type Item
-        newItem2.title = "Buy Balenciaga"
-        itemArray.append(newItem2)
-        
-        let newItem3 = Item() //new item is new object of the type Item
-        newItem3.title = "Find AMG"
-        itemArray.append(newItem3)
+        let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
         
         
+        print(dataFilePath!)
         
-        if let items = defaults.array(forKey: "DataStorage") as? [Item] { // as? [String] - we are doing this to be more specific
-            itemArray = items
-        }
+        
+        loadItems()
         
 
     }
@@ -47,6 +38,8 @@ class TodoListViewController: UITableViewController{ //changed VC to TableVC
         
         return itemArray.count
     }
+    
+    
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
@@ -66,8 +59,7 @@ class TodoListViewController: UITableViewController{ //changed VC to TableVC
 //               }
         
         // value = condition ? valueIfTrue : valueIfFalse
-        cell.accessoryType = item.done ? .checkmark : .none
-        
+        cell.accessoryType = item.done ? .checkmark : .none //if item.done == true -> cell = .checkmark
         
         
         return cell
@@ -80,7 +72,7 @@ class TodoListViewController: UITableViewController{ //changed VC to TableVC
         
        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
-        tableView.reloadData()
+        saveItems()
         
         tableView.deselectRow(at: indexPath, animated: true) //sminka, ne ostaje sivo kad se oznaci item, vec se vrati u belo
         
@@ -105,9 +97,7 @@ class TodoListViewController: UITableViewController{ //changed VC to TableVC
             
             //self.itemArray.append(textField.text!) //dodaj tekst iz fieldText-a u niz
             
-            self.defaults.set(self.itemArray, forKey: "DataStorage")
-            
-            self.tableView.reloadData()
+            self.saveItems()
             
             print(self.itemArray)
         }
@@ -125,6 +115,46 @@ class TodoListViewController: UITableViewController{ //changed VC to TableVC
         
         
     }
+    
+    //Model Manipulation Methods
+    
+    func saveItems() { //ENCODING
+        
+        let encoder = PropertyListEncoder()
+        
+        do {
+            
+            let data = try encoder.encode(itemArray) //Added : Codable in class Item
+            try data.write(to: dataFilePath!)
+            
+        }
+        catch {
+            
+        }
+        
+        
+        self.tableView.reloadData()
+    }
+    
+    func loadItems() { //DECODING
+        
+       if let data = try? Data(contentsOf: dataFilePath!) {
+            
+            let decoder = PropertyListDecoder()
+            
+            do {
+                
+                itemArray =  try decoder.decode([Item].self, from: data)
+                
+            }
+            catch {
+                print("Error decoding item array, \(error)")
+            }
+            
+        }
+        
+    }
+    
     
 
 
