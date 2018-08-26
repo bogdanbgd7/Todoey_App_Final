@@ -7,32 +7,34 @@
 //
 
 import UIKit
+import CoreData
 
-class TodoListViewController: UITableViewController{ //changed VC to TableVC
+
+class TodoListViewController: UITableViewController{ 
     
-//    var itemArray = ["Find Mike", "Buy milk", "Buy gas", "Buy sneakers"]
     
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     var itemArray = [Item]()
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
-    //deleted userDefaults before adding dataFilePath
+    var selectedCategory : Category? { //after selectedCategory got value, didSet gonna trigger
+        didSet{
+            
+            loadItems()
+        }
+    }
+    
     
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
         
-        let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
         
-        
-        print(dataFilePath!)
-        
-        
-        loadItems()
         
 
     }
     
-    //MARK - TableView DataSource METHODS
+    //MARK: - TableView DataSource METHODS
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         
@@ -66,11 +68,12 @@ class TodoListViewController: UITableViewController{ //changed VC to TableVC
         
     }
     
-    //MARK - TableView Delegate METHODS
+    //MARK: - TableView Delegate METHODS
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        //kada korisnik izabere jedan row sta se desi :
         
-       itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+        itemArray[indexPath.row].done = !itemArray[indexPath.row].done //ako nije stikliran - stikliraj na klik : ako jeste - odstikliraj na klik
         
         saveItems()
         
@@ -79,7 +82,7 @@ class TodoListViewController: UITableViewController{ //changed VC to TableVC
         
     }
     
-    //MARK - Add New Items
+    //MARK: - Add New Items
     
     
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
@@ -91,8 +94,12 @@ class TodoListViewController: UITableViewController{ //changed VC to TableVC
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in //akcija
             //what will happen once the user clicks the ADD item button on our alert
             
-            let newItem = Item()
+            
+            
+            let newItem = Item(context: self.context)
             newItem.title = textField.text!
+            newItem.done = false
+            newItem.parentCategory = self.selectedCategory // parentCategory is relationship name from database
             self.itemArray.append(newItem)
             
             //self.itemArray.append(textField.text!) //dodaj tekst iz fieldText-a u niz
@@ -116,47 +123,90 @@ class TodoListViewController: UITableViewController{ //changed VC to TableVC
         
     }
     
-    //Model Manipulation Methods
+    //MARK: - Model Manipulation Methods
     
-    func saveItems() { //ENCODING
-        
-        let encoder = PropertyListEncoder()
+    func saveItems() {
         
         do {
             
-            let data = try encoder.encode(itemArray) //Added : Codable in class Item
-            try data.write(to: dataFilePath!)
+            try     context.save()
             
         }
         catch {
-            
+            print("Error saving context ! \(error)")
         }
         
         
         self.tableView.reloadData()
     }
     
-    func loadItems() { //DECODING
+    //----------------------------------------------------------------
+    
+    
+    func loadItems(with request : NSFetchRequest<Item> = Item.fetchRequest(), predicate : NSPredicate? = nil) {
         
-       if let data = try? Data(contentsOf: dataFilePath!) {
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        
+        if let additionalPredicate = predicate{
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
+        }
+        else {
             
-            let decoder = PropertyListDecoder()
-            
-            do {
-                
-                itemArray =  try decoder.decode([Item].self, from: data)
-                
-            }
-            catch {
-                print("Error decoding item array, \(error)")
-            }
+            request.predicate = categoryPredicate
             
         }
         
+        
+        do {
+            itemArray = try context.fetch(request)
+        }
+        catch{
+            print("Error loading items! \(error)")
+        }
+        
+        tableView.reloadData()
+
     }
     
     
 
 
 }
+
+//MARK: - Search bar methods
+extension TodoListViewController : UISearchBarDelegate {
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        let predicateB  = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        
+        loadItems(with: request, predicate: predicateB)
+        
+        
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        
+        if searchBar.text?.count == 0 {
+            loadItems()
+            
+            DispatchQueue.main.async {
+                
+                searchBar.resignFirstResponder()
+            }
+            
+            
+        }
+    }
+    
+}
+
+
+
+
+
+
+
 
