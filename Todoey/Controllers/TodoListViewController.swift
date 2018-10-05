@@ -7,13 +7,16 @@
 //
 
 import UIKit
-//deleted import CoreData
 import RealmSwift
+import ChameleonFramework
 
 class TodoListViewController: UITableViewController{ 
     
     let realm = try! Realm()
     var todoItems : Results<Item>?
+    
+    @IBOutlet weak var searchBar: UISearchBar!
+    
     
     var selectedCategory : Category? { //after selectedCategory got value, didSet gonna trigger
         didSet{
@@ -29,9 +32,20 @@ class TodoListViewController: UITableViewController{
         super.viewDidLoad()
         
         
-        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
-        
         print("LINK TO REALM \(Realm.Configuration.defaultConfiguration.fileURL!)")
+        
+        tableView.rowHeight = 60.0
+        tableView.separatorStyle = .none
+        
+        //optional binding for navbar color be same as category color
+        if let colourHex = selectedCategory?.colour {
+            
+            
+            
+            navigationController?.navigationBar.barTintColor = UIColor(hexString: colourHex)
+
+        }
+        
 
     }
     
@@ -53,6 +67,16 @@ class TodoListViewController: UITableViewController{
             cell.textLabel?.text = item.title
             cell.accessoryType = item.done ? .checkmark : .none //if item.done == true -> cell = .checkmark
             
+            
+            //gradient cell colour
+            if let colour = UIColor(hexString: selectedCategory!.colour)?.darken(byPercentage:CGFloat(indexPath.row) / CGFloat(todoItems!.count)) {
+                
+                cell.backgroundColor = colour
+                //kad je pozadina crna - stavi beli tekst // kada je bela pozadina - stavi crni tekst ! EZ FROM CHAMELEON
+                cell.textLabel?.textColor = ContrastColorOf(colour, returnFlat: true)
+                
+            }
+        
         }
         else {
             
@@ -62,6 +86,14 @@ class TodoListViewController: UITableViewController{
         
         
         return cell
+        
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        
+        title = selectedCategory?.name
+        
+        navigationController?.navigationBar.tintColor = FlatBlack()
         
     }
     
